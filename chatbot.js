@@ -2,6 +2,9 @@ const qrcode = require('qrcode-terminal');
 const { Client } = require('whatsapp-web.js');
 const client = new Client();
 
+// Variável para armazenar o número do atendente humano
+const NUMERO_ATENDENTE = "5511999999999@c.us"; // Substitua pelo número real
+
 client.on('qr', qr => {
     qrcode.generate(qr, { small: true });
 });
@@ -16,7 +19,7 @@ const userState = {};
 
 const exibirMenuPrincipal = async (from) => {
     userState[from] = 'MENU';
-    await client.sendMessage(from, `Digite uma opção:\n\n1 - Manutenção\n2 - Fazer um pedido\n3 - Falar com um atendente\n0 - Sair`);
+    await client.sendMessage(from, `Digite uma opção:\n\n1 - Fazer um pedido\n2 - Manutenção\n3 - Falar com um atendente\n0 - Sair`);
 };
 
 client.on('message', async msg => {
@@ -40,22 +43,31 @@ client.on('message', async msg => {
     if (userState[from] === 'MENU') {
         if (texto === '1') {
             await chat.sendStateTyping();
-            await client.sendMessage(from, `Manutenção:\n\n1 - Vazamento de Gás\n2 - Registro do Gás Vencido\n0 - Voltar ao menu`);
-            userState[from] = 'AGUARDANDO_OPCAO_MANUTENCAO';
+            await client.sendMessage(from, `💰 *Escolha o produto desejado:*\n\n1 - Água mineral 20L   R$= 20,00 reais\n2 - P2 - Gás de Lampião   R$= 50,00 reais\n3 - P5 - Gás de Fogão de 2 bocas   R$= 65,00 reais\n4 - P8 - Gás de Churrasqueira   R$= 75,00 reais\n5 - P13 - Gás de Cozinha   R$= 100,00 reais\n6 - P20 - Gás de Empilhadeira   R$= 160,00 reais\n7 - P45 - Gás Industrial   R$= 400,00 reais\n\n0 - Voltar ao menu`);
+            userState[from] = 'AGUARDANDO_ESCOLHA_PRODUTO';
             return;
         }
 
         if (texto === '2') {
             await chat.sendStateTyping();
-            await client.sendMessage(from, `💰 *Escolha o produto desejado:*\n\n1 - Água mineral 20L   R$= 20,00 reais\n2 - Gás de Lampião   R$= 50,00 reais\n3 - Gás de Fogão de 2 bocas   R$= 65,00 reais\n4 - Gás de Churrasqueira   R$= 75,00 reais\n5 - Gás de Cozinha   R$= 100,00 reais\n6 - Gás de Empilhadeira   R$= 160,00 reais\n7 - Gás Industrial   R$= 400,00 reais\n\n0 - Voltar ao menu`);
-            userState[from] = 'AGUARDANDO_ESCOLHA_PRODUTO';
+            await client.sendMessage(from, `Manutenção:\n\n1 - Vazamento de Gás\n2 - Registro do Gás Vencido\n0 - Voltar ao menu`);
+            userState[from] = 'AGUARDANDO_OPCAO_MANUTENCAO';
             return;
         }
 
         if (texto === '3') {
             await chat.sendStateTyping();
             await client.sendMessage(from, `Por favor, aguarde enquanto conectamos você com um de nossos atendentes.`);
-            await client.sendMessage(from, `⌛ Você será atendido em breve...`);
+            
+            // Encaminha a mensagem para o atendente humano
+            const mensagemAtendente = `Cliente ${nome} (${from}) solicitou atendimento:\n\nHistórico:\n${texto}`;
+            await client.sendMessage(5511963065421, mensagemAtendente);
+            
+            // Informa ao cliente sobre o redirecionamento
+            await client.sendMessage(from, `Você foi redirecionado para nosso atendente humano. Por favor, aguarde a resposta.`);
+            
+            // Não volta para o menu, encerra a interação
+            delete userState[from];
             return;
         }
 
@@ -64,8 +76,13 @@ client.on('message', async msg => {
             delete userState[from];
             return;
         }
+        
+        // Se não for nenhuma opção válida, mostra o menu novamente
+        await exibirMenuPrincipal(from);
+        return;
     }
 
+    // Restante do código permanece igual...
     if (userState[from] === 'AGUARDANDO_OPCAO_MANUTENCAO') {
         if (texto === '1') {
             await client.sendMessage(from, `Para vazamento de gás, por favor:\n1. Desligue o registro imediatamente\n2. Ventile o ambiente\n3. Não acione interruptores ou chamas\n\nUm técnico será enviado com urgência!`);
@@ -90,12 +107,12 @@ client.on('message', async msg => {
     if (userState[from] === 'AGUARDANDO_ESCOLHA_PRODUTO') {
         const produtos = {
             '1': { nome: 'Água mineral 20L', preco: '20,00' },
-            '2': { nome: 'Gás de Lampião', preco: '50,00' },
-            '3': { nome: 'Gás de Fogão de 2 bocas', preco: '65,00' },
-            '4': { nome: 'Gás de Churrasqueira', preco: '75,00' },
-            '5': { nome: 'Gás de Cozinha', preco: '100,00' },
-            '6': { nome: 'Gás de Empilhadeira', preco: '160,00' },
-            '7': { nome: 'Gás Industrial', preco: '400,00' }
+            '2': { nome: 'P2 - Gás de Lampião', preco: '50,00' },
+            '3': { nome: 'P5 - Gás de Fogão de 2 bocas', preco: '65,00' },
+            '4': { nome: 'P8 - Gás de Churrasqueira', preco: '75,00' },
+            '5': { nome: 'P13 - Gás de Cozinha', preco: '100,00' },
+            '6': { nome: 'P20 - Gás de Empilhadeira', preco: '160,00' },
+            '7': { nome: 'P45 - Gás Industrial', preco: '400,00' }
         };
 
         if (produtos[texto]) {
@@ -118,6 +135,7 @@ client.on('message', async msg => {
         return;
     }
 
+    // Restante das funções permanecem iguais...
     if (userState[from].etapa === 'AGUARDANDO_NOME') {
         if (texto === '0') {
             await exibirMenuPrincipal(from);
@@ -136,12 +154,10 @@ client.on('message', async msg => {
         userState[from] = { ...userState[from], endereco: texto, etapa: 'AGUARDANDO_PAGAMENTO' };
         
         if (userState[from].servico) {
-            // Se for um serviço de manutenção
             await client.sendMessage(from, `✅ Agendamento confirmado!\n\nTécnico será enviado para:\n*${userState[from].endereco}*\n\nServiço: *${userState[from].servico}*\n\nAgradecemos pela confiança! Entraremos em contato para confirmar.`);
             delete userState[from];
             await exibirMenuPrincipal(from);
         } else {
-            // Se for compra de produto
             await client.sendMessage(from, `💳 Escolha a *Forma de pagamento*:\n\n1 - Dinheiro (informe se precisa de troco)\n2 - Cartão (débito/crédito)\n3 - Pix (QR Code)\n\n0 - Voltar ao menu`);
         }
         return;
@@ -181,7 +197,7 @@ client.on('message', async msg => {
         return;
     }
 
-    await client.sendMessage(from, `Não entendi sua mensagem. Por favor, escolha uma das opções abaixo:`);
+    // Se chegar aqui sem reconhecer o comando, mostra o menu principal
     await exibirMenuPrincipal(from);
 });
 
@@ -195,7 +211,6 @@ async function finalizarPedido(from) {
         mensagemPedido += `💰 Troco: *${userState[from].troco || 'Não informado'}*\n`;
     }
     
-    // Brinde especial para Gás de Cozinha (P13)
     if (userState[from].produto.includes('Gás de Cozinha')) {
         mensagemPedido += `\n🎁 *Parabéns!* Você ganhou um brinde especial na compra do Gás P13!\n`;
     }
@@ -204,5 +219,4 @@ async function finalizarPedido(from) {
     
     await client.sendMessage(from, mensagemPedido);
     delete userState[from];
-    await exibirMenuPrincipal(from);
 }
